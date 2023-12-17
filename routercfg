@@ -12,7 +12,7 @@ def log(msg):
     print(msg, file=sys.stderr)
 
 class RouterConfig():
-    def __init__(self, url, password, headless=True):
+    def __init__(self, url, headless=True):
         self.router = url
         options = FirefoxOptions()
 
@@ -20,17 +20,16 @@ class RouterConfig():
             options.add_argument('--headless')
 
         self.driver = webdriver.Firefox(options=options)
-        self.password = password
 
     def __del__(self):
         self.driver.quit()
 
-    def login(self):
+    def login(self, password):
         login_url = self.router + '/login.htm'
         self.driver.get(login_url)
 
         passfield = WebDriverWait(self.driver, 20).until(EC.visibility_of_element_located((By.ID, "password")))
-        passfield.send_keys(self.password)
+        passfield.send_keys(password)
         self.driver.find_element(By.ID, 'loginBtn').click()
         WebDriverWait(self.driver, 5).until(EC.url_to_be(self.router + '/zy_select.htm'))
 
@@ -62,10 +61,10 @@ parser.add_argument('--g2_4', choices=offon, help="Enable/Disable 2.4G wlan")
 parser.add_argument('--no-headless', action="store_true")
 args = parser.parse_args(sys.argv[1:])
 
-cfg = RouterConfig('http://192.168.8.1', 'xxxxxxxxx', headless=not args.no_headless)
+cfg = RouterConfig('http://192.168.8.1', headless=not args.no_headless)
 
 log('logging in...')
-cfg.login()
+cfg.login('xxxxxxxxx')
 
 if args.g5:
     log('turning 5G {}...'.format(args.g5))
