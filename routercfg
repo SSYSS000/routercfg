@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import sys
-from selenium import webdriver
+from selenium.webdriver.firefox.webdriver import WebDriver as FirefoxWebDriver
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
@@ -19,7 +19,7 @@ class RouterConfig():
         if headless:
             options.add_argument('--headless')
 
-        self.driver = webdriver.Firefox(options=options)
+        self.driver = FirefoxWebDriver(options=options)
 
     def __del__(self):
         self.driver.quit()
