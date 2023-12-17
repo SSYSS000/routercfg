@@ -1,0 +1,77 @@
+#!/usr/bin/env python3
+
+import sys
+from selenium import webdriver
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.by import By
+from selenium.webdriver.firefox.options import Options as FirefoxOptions
+import argparse
+
+def log(msg):
+    print(msg, file=sys.stderr)
+
+class RouterConfig():
+    def __init__(self, url, password, headless=True):
+        self.router = url
+        options = FirefoxOptions()
+
+        if headless:
+            options.add_argument('--headless')
+
+        self.driver = webdriver.Firefox(options=options)
+        self.password = password
+
+    def __del__(self):
+        self.driver.quit()
+
+    def login(self):
+        login_url = self.router + '/login.htm'
+        self.driver.get(login_url)
+
+        passfield = WebDriverWait(self.driver, 20).until(EC.visibility_of_element_located((By.ID, "password")))
+        passfield.send_keys(self.password)
+        self.driver.find_element(By.ID, 'loginBtn').click()
+        WebDriverWait(self.driver, 5).until(EC.url_to_be(self.router + '/zy_select.htm'))
+
+    def set_5g_enabled(self, enabled):
+        wifi_5g_page = self.router + '/formRedirect.htm?redirect-url=zy_wlan_basic.htm&wlan_id=0'
+        self._set_wlan_state(enabled, wifi_5g_page)
+
+    def set_2_4g_enabled(self, enabled):
+        wifi_2_4g_page = self.router + '/formRedirect.htm?redirect-url=zy_wlan_basic.htm&wlan_id=1'
+        self._set_wlan_state(enabled, wifi_2_4g_page)
+
+    def _set_wlan_state(self, on, page):
+        self.driver.get(page)
+        checkbox = self.driver.find_element(By.NAME, 'wl_wlanEnabled')
+
+        if on and not checkbox.is_selected():
+            checkbox.click()
+        elif not on and checkbox.is_selected():
+            checkbox.click()
+
+        self.driver.find_element(By.NAME, "save").click()
+        WebDriverWait(self.driver, 5).until(EC.url_to_be(self.router + '/formWlanSetupAll.htm'))
+        WebDriverWait(self.driver, 60).until(EC.url_to_be(page))
+
+offon = ('off', 'on')
+parser = argparse.ArgumentParser(description="Tool to configure home router")
+parser.add_argument('--g5', choices=offon, help="Enable/Disable 5G wlan")
+parser.add_argument('--g2_4', choices=offon, help="Enable/Disable 2.4G wlan")
+parser.add_argument('--no-headless', action="store_true")
+args = parser.parse_args(sys.argv[1:])
+
+cfg = RouterConfig('http://192.168.8.1', 'xxxxxxxxx', headless=not args.no_headless)
+
+log('logging in...')
+cfg.login()
+
+if args.g5:
+    log('turning 5G {}...'.format(args.g5))
+    cfg.set_5g_enabled(args.g5 == 'on')
+
+if args.g2_4:
+    log('turning 2.4G {}...'.format(args.g2_4))
+    cfg.set_2_4g_enabled(args.g2_4 == 'on')
+
