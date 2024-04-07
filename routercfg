@@ -7,11 +7,12 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
 from selenium.webdriver.firefox.options import Options as FirefoxOptions
 import argparse
+import configparser
 
 def log(msg):
     print(msg, file=sys.stderr)
 
-class RouterConfig():
+class Router():
     def __init__(self, url, headless=True):
         self.router = url
         options = FirefoxOptions()
@@ -54,6 +55,7 @@ class RouterConfig():
         WebDriverWait(self.driver, 5).until(EC.url_to_be(self.router + '/formWlanSetupAll.htm'))
         WebDriverWait(self.driver, 60).until(EC.url_to_be(page))
 
+# parse command arguments
 offon = ('off', 'on')
 parser = argparse.ArgumentParser(description="Tool to configure home router")
 parser.add_argument('--g5', choices=offon, help="Enable/Disable 5G wlan")
@@ -61,16 +63,28 @@ parser.add_argument('--g2_4', choices=offon, help="Enable/Disable 2.4G wlan")
 parser.add_argument('--no-headless', action="store_true")
 args = parser.parse_args(sys.argv[1:])
 
-cfg = RouterConfig('http://192.168.8.1', headless=not args.no_headless)
+# read the routercfg file
+config = configparser.ConfigParser()
+config.read('routercfg.ini')
+router_addr = config['router']['address']
+password_file = config['router']['password_file']
+
+# read password
+with open(password_file, 'r') as f:
+    password = f.read()
+
+# connect and login
+router = Router(router_addr, headless=not args.no_headless)
 
 log('logging in...')
-cfg.login('xxxxxxxxx')
+router.login(password)
 
+# do the actions specified in the command arguments
 if args.g5:
     log('turning 5G {}...'.format(args.g5))
-    cfg.set_5g_enabled(args.g5 == 'on')
+    router.set_5g_enabled(args.g5 == 'on')
 
 if args.g2_4:
     log('turning 2.4G {}...'.format(args.g2_4))
-    cfg.set_2_4g_enabled(args.g2_4 == 'on')
+    router.set_2_4g_enabled(args.g2_4 == 'on')
 
